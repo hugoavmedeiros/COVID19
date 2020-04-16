@@ -42,17 +42,19 @@ Deaths_USA <- Deaths_USA[USE,]
 # I merged it into "New York County"
 NYC  <- which(Cases_USA$County.Name == "New York County")
 NYCU <- which(Cases_USA$County.Name == "New York City Unallocated")
-Cases_USA[NYC, 5:ncol(Cases_USA)] <-
+if (length(NYCU) > 0)
+{
+  Cases_USA[NYC, 5:ncol(Cases_USA)] <-
   Cases_USA[NYC , 5:ncol(Cases_USA)] +
   Cases_USA[NYCU, 5:ncol(Cases_USA)]
   
-Deaths_USA[NYC, 5:ncol(Deaths_USA)] <-
+  Deaths_USA[NYC, 5:ncol(Deaths_USA)] <-
   Deaths_USA[NYC , 5:ncol(Deaths_USA)] +
   Deaths_USA[NYCU, 5:ncol(Deaths_USA)]
-
-Cases_USA <- Cases_USA[-NYCU,]
-Deaths_USA <- Deaths_USA[-NYCU,]
-
+  
+  Cases_USA <- Cases_USA[-NYCU,]
+  Deaths_USA <- Deaths_USA[-NYCU,]
+}
 # The county named "Statewide Unallocated" has a countyFIPS of 0. Need to change that to 1000 * stateFIPS
 USE <- Cases_USA$CountyFIPS == 0
 Cases_USA$CountyFIPS[USE] <- Cases_USA$stateFIPS[USE] * 1000

@@ -20,15 +20,16 @@
   # USA Files: Cases_USA, Deaths_USA, Population_USA
   # Global Files: Cases_Global, Deaths_Global, Population_Global
   
-  # Check if updated
-  if (
-    tail(names(Cases_USA),1) ==
-    gsub(" ","", gsub("^X0","X", format(today - 1, "X%m.%e.%y"))) |
-    tail(names(Deaths_USA),1) ==
-    gsub(" ","", gsub("^X0","X", format(today - 1, "X%m.%e.%Y")))
+  lastColumn <- which(
+    grepl(gsub("^X0","X", format(today - 1, "X%m.%e.%y")), names(Cases_USA),1) |
+    grepl(gsub("^X0","X", format(today - 1, "X%m.%e.%Y")), names(Cases_USA),1)
   )
-  {
 
+if (length(lastColumn) > 0)
+{
+  Cases_USA  <- Cases_USA[,1:lastColumn]
+  Deaths_USA <- Deaths_USA[,1:lastColumn]
+  
   projection <- 7 # Project forward just 7 days
   asymptomatic <- 10  # Number of asymptomatic patients per symptomatic patient
   endDate <- startDate + allDays + projection - 1
@@ -233,9 +234,14 @@ plotPred <- function(
     
     # Last 5 days
     Y <- log(CASES$Actual[CASES$Date > today - 6 & CASES$Date < today])
-    X <- 1:length(Y)
-    coefs <- lm(Y ~ X)$coefficients
-    last5Doubling <- 0.693 / coefs[2]
+    if (Y[1] < Y[5])
+    {
+      X <- 1:length(Y)
+      coefs <- lm(Y ~ X)$coefficients
+      last5Doubling <- sprintf("%0.1f", 0.693 / coefs[2]) 
+    } else {
+      last5Doubling <- "flat (no change)"
+    }
 
     # Prediction over next week
     X <- end:nrow(CASES)
@@ -249,7 +255,7 @@ plotPred <- function(
       DATA <- CASES
     }
 
-    caption <- paste0("Doubling time over past 5 days ",sprintf("%0.1f", last5Doubling)) 
+    caption <- paste0("Doubling time over past 5 days: ", last5Doubling) 
 
     DATA$Phase <- factor(as.character(DATA$Phase), levels=c("Pre log linear","Log linear","Current", "Deaths"), ordered = TRUE)
   #  DEATHS$Phase <- factor(as.character(DEATHS$Phase), levels=c("Pre log linear","Log linear","Current", "Deaths"), ordered = TRUE)
@@ -259,7 +265,7 @@ plotPred <- function(
       coord_cartesian(ylim = c(1,10000000), expand = TRUE, clip = "on") +
       geom_line(data=DATA[DATA$Phase != "Deaths",], size = 1, aes(y=Predicted), color="red", na.rm = TRUE) +
       labs(
-        title = paste("Steve's", Title,"projection as of", Sys.Date()),
+        title = paste(Title,"projection as of", Sys.Date()),
         y = "Actual (points) / Predicted (line)",
         caption = caption
       ) +
@@ -462,38 +468,70 @@ plotPred <- function(
   plotPred(County = c("Santa Clara County", "San Mateo County"), Title = "Santa Clara and San Mateo", 
            logStart = "2020-03-02", logEnd = "2020-03-20", weight = 1)
   plotPred(County = "San Francisco County", Title = "San Francisco", logStart = "2020-03-07", logEnd = "2020-03-27")
-  plotPred(County = "San Luis Obispo County", Title = "San Luis Obispo", logStart = "2020-03-16", logEnd = "2020-03-25")
-  plotPred(County = "King County", State = "WA", Title = "King County (Seattle)", logStart = "2020-02-29", logEnd = "2020-03-10", weight=0)
+  plotPred(County = "San Luis Obispo County", Title = "San Luis Obispo", 
+           logStart = "2020-03-16", logEnd = "2020-03-28")
+  plotPred(County = "King County", State = "WA", Title = "King County (Seattle)", 
+           logStart = "2020-02-29", logEnd = "2020-03-19", weight=0)
   plotPred(County = "Los Angeles County", State = "CA", Title = "Los Angeles", logStart = "2020-03-04", 
            logEnd = "2020-03-27", weight = 1.5)
-  plotPred(County = "Multnomah County", Title = "Multnomah County (Portland)", logStart = "2020-03-16", logEnd = "2020-03-23")
+  plotPred(County = "Multnomah County", Title = "Multnomah County (Portland)", 
+           logStart = "2020-03-16", logEnd = "2020-03-31")
   plotPred(County = "Westchester County", Title = "Westchester County", logStart = "2020-03-15", 
            logEnd = "2020-03-26", weight = 1)
   plotPred(County = "Alameda County", Title = "Alameda County", logStart = "2020-03-05", logEnd = "2020-03-24")
-  plotPred(County = c("Santa Clara County", "San Mateo County", "San Francisco County", "Marin County", "Napa County", "Solano County", "Sonoma County"), Title = "Bay Area", logStart = "2020-03-02", logEnd = "2020-03-12")
-  plotPred(County = "De Soto Parish", Title = "De Soto Parish, Louisiana", logStart = "2020-03-22", logEnd = "2020-03-25")
+  plotPred(County = c("Santa Clara County", "San Mateo County", "San Francisco County", "Marin County", "Napa County", "Solano County", "Sonoma County"), 
+           Title = "Bay Area", logStart = "2020-03-02", logEnd = "2020-03-23")
+  plotPred(County = "De Soto Parish", Title = "De Soto Parish, Louisiana", 
+           logStart = "2020-03-22", logEnd = "2020-03-25")
   plotPred(County = "Bergen County", Title = "Bergen County", logStart = "2020-03-14", 
-           logEnd = "2020-03-25", weight = 1.5)
-  plotPred(County = "Dallas County", State = "TX", Title = "Dallas Texas", logStart = "2020-03-10", logEnd = "2020-03-20")
-  plotPred(County = "Collin County", State = "TX", Title = "Collin Texas", logStart = "2020-03-19", logEnd = "2020-03-20")
-  plotPred(County = "Harris County", State = "TX", Title = "Harris County, Texas", logStart = "2020-03-20", logEnd = "2020-03-21")
+           logEnd = "2020-03-29", weight = 1)
+  plotPred(State = "DC", Title = "Washington DC", logStart = "2020-03-14", 
+           logEnd = "2020-04-03", weight = 1.5)
+  plotPred(County = "Dallas County", State = "TX", Title = "Dallas Texas", 
+           logStart = "2020-03-10", logEnd = "2020-03-25")
+  plotPred(County = "Collin County", State = "TX", Title = "Collin Texas", 
+           logStart = "2020-03-19", logEnd = "2020-03-26")
+  plotPred(County = "Harris County", State = "TX", Title = "Harris County, Texas", 
+           logStart = "2020-03-20", logEnd = "2020-04-07",weight = 1)
   plotPred(County = "McLean County", State = "IL", Title = "McLean County, Illinois", logStart = "2020-03-20",
-           logEnd = "2020-03-26")
+           logEnd = "2020-04-02")
   plotPred(County = "Cook County", State = "IL", Title = "Cook County, Illinois", logStart = "2020-03-06", logEnd = "2020-03-20")
   plotPred(County = "Suffolk County", State = "MA", Title = "Suffolk County (Boston)", logStart = "2020-03-10", 
-           logEnd = "2020-03-27", weight = 2)
+           logEnd = "2020-04-05", weight = 2)
   plotPred(State = "UT", Title = "Utah (State)", logStart = "2020-03-02", logEnd = "2020-03-18")
   plotPred(County = "Utah County", Title = "Utah County", logStart = "2020-03-02", 
            logEnd = "2020-04-02", weight=1)
-  plotPred(County = "Polk County", State = "IA", Title = "Polk County, Iowa", logStart = "2020-03-02", 
-           logEnd = "2020-03-27")
-  plotPred(County = "Oakland County", State = "MI", Title = "Oakland County, Michigan", logStart = "2020-03-02", logEnd = "2020-03-22")
+  plotPred(County = "Polk County", State = "IA", Title = "Polk County, Iowa", 
+           logStart = "2020-03-02", logEnd = "2020-04-09", weight = 0)
+  plotPred(County = "Oakland County", State = "MI", Title = "Oakland County, Michigan", 
+           logStart = "2020-03-02", logEnd = "2020-03-27", weight = 1)
   plotPred(State = "HI", Title = "Hawaii", logStart = "2020-03-02", logEnd = "2020-03-22")
-  plotPred(County = "City of St. Louis", Title = "St. Louis (City)", logStart = "2020-03-02", logEnd = "2020-03-25")
-  plotPred(County = "St. Louis County", Title = "St. Louis (County)", logStart = "2020-03-02", logEnd = "2020-03-25")
-  plotPred(County = "Baltimore City", Title = "Baltimore (City)", logStart = "2020-03-02", logEnd = "2020-03-25")
-  plotPred(County = "Durham County", Title = "Durham County", logStart = "2020-03-17", logEnd = "2020-03-24")
-  
+  plotPred(County = "City of St. Louis", Title = "St. Louis (City)", 
+           logStart = "2020-03-02", logEnd = "2020-04-06", weight = 2)
+  plotPred(County = "St. Louis County", Title = "St. Louis (County)", 
+           logStart = "2020-03-02", logEnd = "2020-03-31")
+  plotPred(County = "Baltimore City", Title = "Baltimore (City)", 
+           logStart = "2020-03-02", logEnd = "2020-03-25")
+  plotPred(County = "Durham County", Title = "Durham County", 
+           logStart = "2020-03-17", logEnd = "2020-04-03")
+  plotPred(County="Miami-Dade County", Title = "Miami-Dade",
+           logStart = "2020-03-02", logEnd="2020-03-28")
+  plotPred(State="FL", Title = "Florida",
+           logStart = "2020-03-02",logEnd="2020-04-01")
+  plotPred(State="SD", Title = "South Dakota",
+           logStart = "2020-03-02",logEnd="2020-04-02")
+  plotPred(State="MT", Title = "Montana",
+           logStart = "2020-03-02",logEnd="2020-04-02", weight = 0)
+  plotPred(State="IA", Title = "Iowa",
+           logStart = "2020-03-02",logEnd="2020-04-02", weight = 0)
+  # States with and without statewide public health restrictions
+  NoOrders <- c("ND", "SD", "NE", "WY","UT","OK","IA","AR")
+  plotPred(State=NoOrders, Title = "States without statewide orders",
+           logStart = "2020-03-02",logEnd="2020-04-02", weight = 0)
+  plotPred(State=states$abbreviation[!states$abbreviation %in% NoOrders], 
+           Title = "States with statewide orders",
+           logStart = "2020-03-02",logEnd="2020-04-02", weight = 0)
+
   # Last week doubling times by state
   STATES <- data.frame(
     abbr = states$abbreviation,
@@ -520,6 +558,7 @@ plotPred <- function(
     fit <- lm(Y ~ X)$coefficients
     STATES$intercept[i] <- fit[1]
     STATES$slope[i] <- fit[2]
+    if (STATES$slope[i] < 0.01) STATES$slope[i] <- 0.01 
     fit <- covid_fit(Y, log(STATES$population[i] / (1 +  asymptomatic)))
     # Peak can't get higher than 70% of state population
     STATES$intercept[i] <- fit[1]
@@ -529,6 +568,7 @@ plotPred <- function(
     
   STATES$dtime <- 0.693/STATES$slope
   STATES$dtime[STATES$dtime > 25] <- 25
+  STATES$dtime[STATES$dtime < 2] <- 2
   STATES$PredWeek  <- exp(STATES$intercept + (STATES$peak - STATES$intercept) * (1-exp(-STATES$k *  7))) / STATES$population * 100
   STATES$Pred30Day <- exp(STATES$intercept + (STATES$peak - STATES$intercept) * (1-exp(-STATES$k * 30))) / STATES$population * 100
   
@@ -545,7 +585,7 @@ plotPred <- function(
   
   # By doubling time
   STATES$state <- factor(STATES$state, levels = STATES$state[order(STATES$dtime)], ordered = TRUE)
-  Title <- paste("Steve's 7 day estimation of doubling time", Sys.Date())
+  Title <- paste("Five day estimation of doubling time", Sys.Date())
   ggObject <- ggplot(STATES, aes(x=state, y=dtime)) +
     geom_col(fill = "brown", color="black", width=.5) +
     theme(axis.text.x=element_text(angle=60, hjust=1)) +
@@ -567,9 +607,9 @@ plotPred <- function(
     )
   nextSlide(ggObject, "Doubling Time")
   
-  # Population Percent in 7 days
+  # Population Percent in five days
   STATES$state <- factor(STATES$state, levels = STATES$state[order(STATES$PredWeek)], ordered = TRUE)
-  Title <- paste("Steve's projected cases for", endDate)
+  Title <- paste("Projected cases for", endDate)
   ggObject <- ggplot(STATES, aes(x=state, y=PredWeek)) +
     geom_col(fill = "brown", color="black", width=.5) +
     theme(axis.text.x=element_text(angle=60, hjust=1)) +
@@ -594,7 +634,7 @@ plotPred <- function(
   
   # Population Percent in 30 days
   STATES$state <- factor(STATES$state, levels = STATES$state[order(STATES$Pred30Day)], ordered = TRUE)
-  Title <- paste("Steve's projection for", endDate)
+  Title <- paste("Projection for", endDate)
   ggObject <- ggplot(STATES, aes(x=state, y=Pred30Day)) +
     geom_col(fill = "brown", color="black", width=.5) +
     theme(axis.text.x=element_text(angle=60, hjust=1)) +
@@ -651,32 +691,41 @@ plotPred <- function(
     )
   nextSlide(ggObject, "Current US Deaths by County")
   
+  
+  
+  
   # Worldwide
   plotPred(Country = "Italy", Title = "Italy", logStart = "2020-02-22", logEnd = "2020-03-13", weight = 0)
   plotPred(Country = "Spain", Title = "Spain", logStart = "2020-02-25", 
            logEnd = "2020-03-21")
   plotPred(Country = "France", Title = "France", logStart = "2020-02-27", 
            logEnd = "2020-04-04", weight = 0)
-  plotPred(Country = "Portugal", Title = "Portugal", logStart = "2020-03-03", logEnd = "2020-03-17")
+  plotPred(Country = "Portugal", Title = "Portugal", 
+           logStart = "2020-03-03", logEnd = "2020-03-31")
   plotPred(Country = "Sweden", Title = "Sweden", logStart = "2020-02-28", 
            logEnd = "2020-03-15", weight=0)
   plotPred(Country = "Netherlands", Title = "Netherlands", logStart = "2020-02-29", 
-           logEnd = "2020-03-19")
-  plotPred(Country = "England", Title = "United Kingdom", logStart = "2020-02-26", 
-           logEnd = "2020-03-25")
+           logEnd = "2020-03-27")
+  plotPred(Country = "England", Title = "United Kingdom", 
+           logStart = "2020-02-26", logEnd = "2020-03-31", weight = 2)
   plotPred(Country = "South Africa", Title = "South Africa", logStart = "2020-03-08", logEnd = "2020-03-27", weight = 0)
-  plotPred(Country = "Brazil", Title = "Brazil", logStart = "2020-03-09", 
-           logEnd = "2020-03-23", weight = 0)
+  plotPred(Country = "Brazil", Title = "Brazil", logStart = "2020-03-08", 
+           logEnd = "2020-03-31", weight = 1)
   plotPred(Country = "Paraguay", Title = "Paraguay", logStart = "2020-03-09", logEnd = "2020-03-22", weight = 0)
-  plotPred(Country = "Rwanda", Title = "Rwanda", logStart = "2020-03-12", logEnd = "2020-03-19")
+  plotPred(Country = "Rwanda", Title = "Rwanda", 
+           logStart = "2020-03-12", logEnd = "2020-03-26")
   plotPred(Country = "Canada", Title = "Canada", logStart = "2020-03-10", logEnd = "2020-03-22")
   plotPred(Country = "Australia", Title = "Australia", logStart = "2020-03-10", 
            logEnd = "2020-03-20", weight=0)
+  plotPred(Country = "Germany", Title = "Germany", logStart = "2020-02-26", 
+           logEnd = "2020-03-26", weight=0)
+  plotPred(Country = "Switzerland", Title = "Switzerland", logStart = "2020-03-10", 
+           logEnd = "2020-03-23", weight=1)
   plotPred(Country = "Israel", Title = "Israel", logStart = "2020-02-27", logEnd = "2020-03-25", weight=0)
   plotPred(Country = "Russia", Title = "Russia", logStart = "2020-03-11", logEnd = "2020-04-02", weight=1)
   plotPred(Country = "India", Title = "India", logStart = "2020-03-06", logEnd = "2020-03-25", weight=0)
   plotPred(Country = "Japan", Title = "Japan", logStart = "2020-02-20", 
-           logEnd = "2020-03-30", weight=1)
+           logEnd = "2020-04-02", weight=1)
   plotPred(Country = "Mexico", Title = "Mexico", logStart = "2020-02-20", 
            logEnd = "2020-03-30", weight=0)
   
@@ -752,14 +801,15 @@ plotPred <- function(
   }
   doubling_Global <- doubling_Global[!is.na(doubling_Global$doublingTime),]
   doubling_Global <- doubling_Global[!is.infinite(doubling_Global$doublingTime),]
-  doubling_Global$doublingTime[doubling_Global$doublingTime < 0] <- 0
-  doubling_Global$doublingTime[doubling_Global$doublingTime > 30] <- 30
+  doubling_Global$doublingTime <- pmax(doubling_Global$doublingTime, 0)
+  doubling_Global$doublingTime <- pmin(doubling_Global$doublingTime, 68)
+  doubling_Global$doublingTimeWorldMap <- pmin(doubling_Global$doublingTime, 30)
 
   CROWS <- match(worldmap$geounit, doubling_Global$Country)
-  worldmap$doublingTime <- doubling_Global$doublingTime[CROWS]
+  worldmap$doublingTimeWorldMap <- doubling_Global$doublingTimeWorldMap[CROWS]
 
   ggObject <-   ggplot() + 
-    geom_sf(data = worldmap, color="#00013E", aes(fill=doublingTime)) +
+    geom_sf(data = worldmap, color="#00013E", aes(fill=doublingTimeWorldMap)) +
     scale_fill_gradient(high="#FFCFCF",low="#C00000") +
     labs(
       title = paste("Doubling Time as of", Sys.Date())
@@ -781,18 +831,35 @@ plotPred <- function(
   nextSlide(ggObject, "Worldwide Doubling Time")
   
   doubling_Global$Country <- factor(doubling_Global$Country, levels = doubling_Global$Country[order(doubling_Global$doublingTime)], ordered = TRUE)
-  Title <- paste("Doubling Time over the last 5 days as of", Sys.Date())
-  ggObject <- ggplot(doubling_Global, aes(x=Country, y=doublingTime)) +
+  Title <- paste("Doubling time over the last 5 days as of", Sys.Date())
+  
+  ggObject <- ggplot(doubling_Global[doubling_Global$doublingTime <= 14,], aes(x=Country, y=doublingTime)) +
     geom_col(fill = "brown", color="black", width=.5) +
-    theme(axis.text.x=element_text(angle=90, hjust=1, size = 6)) +
+    coord_cartesian(
+      ylim = c(0,14)) +
+    scale_y_continuous(breaks = c(2,4,5,8,10,12,14)) +
+    theme(axis.text.x=element_text(angle=90, hjust=1, size = 8)) +
     labs(
       title = Title,
       y = "Doubling Time",
       x = "Country"
     )
-  nextSlide(ggObject, "Doubling Time (last 5 days")
+  nextSlide(ggObject, "Doubling time (last 5 days)")
   
-  print(pptx, target = pptxfileName)
+  ggObject <- ggplot(doubling_Global[doubling_Global$doublingTime > 14,], aes(x=Country, y=doublingTime)) +
+    geom_col(fill = "brown", color="black", width=.5) +
+    coord_cartesian(
+      ylim = c(14,68)) +
+    scale_y_continuous(breaks = c(14, 28, 42, 54, 68)) +
+    theme(axis.text.x=element_text(angle=90, hjust=1, size = 8)) +
+    labs(
+      title = Title,
+      y = "Doubling Time",
+      x = "Country"
+    )
+  nextSlide(ggObject, "Doubling Time (last 5 days)")
+
+    print(pptx, target = pptxfileName)
 } else {
     cat("usafacts.org not updated yet\n")
 }
